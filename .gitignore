@@ -1,0 +1,65 @@
+# ==========================================
+# RetailIQ AI — Master GitIgnore
+# ==========================================
+
+# Environment & Secrets
+.env
+.env.local
+.env.development
+.env.production
+!.env.example
+
+# Python Caches & Virtual Environments
+__pycache__/
+*.py[cod]
+*$py.class
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+venv/
+.venv/
+env/
+ENV/
+
+# Node & Frontend Build Artifacts
+node_modules/
+dist/
+build/
+.vite/
+.cache/
+coverage/
+
+# Large Datasets
+ml/data/*
+!ml/data/README.md
+
+# Machine Learning Models
+ml/models/*.joblib
+ml/models/*.pkl
+ml/models/*.pickle
+
+# Local Test SQLite Databases
+*.db
+*.sqlite
+*.sqlite3
+
+# Logs & Temporary Files
+*.log
+*.tmp
+*.temp
+*.bak
+*.old
+*.swp
+*.swo
+
+# OS System Files
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# IDE & Local Agent Caches
+.vscode/
+.idea/
+.antigravity/
