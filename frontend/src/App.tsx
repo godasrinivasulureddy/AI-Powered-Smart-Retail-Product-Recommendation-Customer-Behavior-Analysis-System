@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Header } from './components/Header.tsx';
 import { Login } from './components/Login.tsx';
+import { LandingPage } from './components/LandingPage.tsx';
 import { ExecutiveDashboard } from './components/ExecutiveDashboard.tsx';
 import { CustomerExplorer } from './components/CustomerExplorer.tsx';
 import { RecommendationSandbox } from './components/RecommendationSandbox.tsx';
@@ -12,6 +13,7 @@ import { api, getAuthToken } from './services/api.ts';
 export function App() {
   const [activeTab, setActiveTab] = useState<string>('dashboard');
   const [healthStatus, setHealthStatus] = useState<string>('ok');
+  const [viewMode, setViewMode] = useState<'landing' | 'login'>('landing');
   
   // Auth state management
   const [user, setUser] = useState<{ email: string; role: string } | null>(() => {
@@ -27,6 +29,7 @@ export function App() {
     localStorage.removeItem('user_email');
     localStorage.removeItem('user_role');
     setUser(null);
+    setViewMode('landing');
     setActiveTab('dashboard');
   };
 
@@ -55,6 +58,29 @@ export function App() {
     };
   }, []);
 
+  // Unauthenticated user flow
+  if (!user) {
+    if (viewMode === 'landing') {
+      return (
+        <LandingPage
+          onGetStarted={() => setViewMode('login')}
+          onSignIn={() => setViewMode('login')}
+        />
+      );
+    }
+    return (
+      <div className="min-h-screen bg-slate-50 flex flex-col selection:bg-indigo-500 selection:text-white">
+        <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-8 flex items-center justify-center">
+          <Login
+            onLoginSuccess={handleLoginSuccess}
+            onBackToHome={() => setViewMode('landing')}
+          />
+        </main>
+      </div>
+    );
+  }
+
+  // Authenticated user flow
   return (
     <div className="min-h-screen bg-slate-50 flex flex-col selection:bg-indigo-500 selection:text-white">
       <Header
@@ -66,18 +92,12 @@ export function App() {
       />
 
       <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {!user ? (
-          <Login onLoginSuccess={handleLoginSuccess} />
-        ) : (
-          <>
-            {activeTab === 'dashboard' && <ExecutiveDashboard />}
-            {activeTab === 'customers' && <CustomerExplorer />}
-            {activeTab === 'recommendations' && <RecommendationSandbox />}
-            {activeTab === 'predictions' && <PurchasePredictor />}
-            {activeTab === 'models' && <ModelRegistryView />}
-            {activeTab === 'api' && <ApiConsole />}
-          </>
-        )}
+        {activeTab === 'dashboard' && <ExecutiveDashboard />}
+        {activeTab === 'customers' && <CustomerExplorer />}
+        {activeTab === 'recommendations' && <RecommendationSandbox />}
+        {activeTab === 'predictions' && <PurchasePredictor />}
+        {activeTab === 'models' && <ModelRegistryView />}
+        {activeTab === 'api' && <ApiConsole />}
       </main>
 
       <footer className="bg-white border-t border-slate-200/80 py-6 text-slate-500 text-xs mt-auto">
@@ -99,4 +119,5 @@ export function App() {
 }
 
 export default App;
+
 

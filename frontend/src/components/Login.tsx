@@ -4,15 +4,15 @@ import { api } from '../services/api.ts';
 
 interface LoginProps {
   onLoginSuccess: (token: string, user: { email: string; role: string }) => void;
+  onBackToHome?: () => void;
 }
 
-export const Login: React.FC<LoginProps> = ({ onLoginSuccess }) => {
+export const Login: React.FC<LoginProps> = ({ onLoginSuccess, onBackToHome }) => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -26,7 +26,6 @@ export const Login: React.FC<LoginProps> = ({ onLoginSuccess }) => {
       setError(null);
       const data = await api.login(email, password);
       
-      // Determine user role from email (or default to ANALYST)
       let role = 'ANALYST';
       if (email.includes('admin')) role = 'ADMIN';
       if (email.includes('viewer')) role = 'VIEWER';
@@ -46,7 +45,15 @@ export const Login: React.FC<LoginProps> = ({ onLoginSuccess }) => {
   };
 
   return (
-    <div className="min-h-[80vh] flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8">
+    <div className="min-h-[80vh] flex flex-col items-center justify-center py-12 px-4 sm:px-6 lg:px-8">
+      {onBackToHome && (
+        <button
+          onClick={onBackToHome}
+          className="mb-6 inline-flex items-center space-x-1.5 text-xs font-semibold text-slate-500 hover:text-indigo-600 transition-colors cursor-pointer bg-white px-3.5 py-2 rounded-xl border border-slate-200/80 shadow-xs"
+        >
+          <span>← Back to Product Overview</span>
+        </button>
+      )}
       <div className="max-w-md w-full space-y-8 bg-white p-8 rounded-3xl border border-slate-200/80 shadow-lg">
         {/* Header Branding */}
         <div className="text-center">
@@ -60,6 +67,7 @@ export const Login: React.FC<LoginProps> = ({ onLoginSuccess }) => {
             Enterprise Retail Intelligence & Behavioral Analytics Platform
           </p>
         </div>
+
 
         {/* Demo Account Quick-Fill Badges */}
         <div className="bg-slate-50 p-4 rounded-2xl border border-slate-100 space-y-2">
