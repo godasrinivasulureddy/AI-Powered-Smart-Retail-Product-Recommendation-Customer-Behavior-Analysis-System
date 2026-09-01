@@ -68,7 +68,7 @@ export const ApiConsole: React.FC = () => {
       name: 'User Authentication Login',
       method: 'POST',
       url: '/api/v1/auth/login',
-      body: JSON.stringify({ email: 'analyst@retail-ai.internal', password: 'password123' }, null, 2),
+      body: JSON.stringify({ email: 'analyst@retail-ai.internal', password: '••••••••••••' }, null, 2),
       description: 'Authenticates system user and returns JWT token pair.',
     },
   ];
@@ -97,6 +97,11 @@ export const ApiConsole: React.FC = () => {
       const start = performance.now();
 
       const token = getAuthToken();
+      let reqBody = body;
+      if (reqBody.includes('••••••••••••')) {
+        reqBody = reqBody.replace('••••••••••••', 'password123');
+      }
+
       const options: RequestInit = {
         method,
         headers: {
@@ -104,8 +109,8 @@ export const ApiConsole: React.FC = () => {
           ...(token ? { Authorization: `Bearer ${token}` } : {}),
         },
       };
-      if (method === 'POST' && body) {
-        options.body = body;
+      if (method === 'POST' && reqBody) {
+        options.body = reqBody;
       }
 
       const res = await fetch(url, options);
@@ -115,7 +120,17 @@ export const ApiConsole: React.FC = () => {
       setResponseStatus(res.status);
 
       const json = await res.json();
-      setResponseData(JSON.stringify(json, null, 2));
+      
+      // Mask sensitive JWT tokens in API console output for security
+      const sanitized = JSON.parse(JSON.stringify(json));
+      if (sanitized?.data?.access_token) {
+        sanitized.data.access_token = 'eyJhbGciOiJIUzI1Ni... [PROTECTED_JWT_ACCESS_TOKEN]';
+      }
+      if (sanitized?.data?.refresh_token) {
+        sanitized.data.refresh_token = 'eyJhbGciOiJIUzI1Ni... [PROTECTED_JWT_REFRESH_TOKEN]';
+      }
+
+      setResponseData(JSON.stringify(sanitized, null, 2));
     } catch (err: any) {
       setResponseStatus(500);
       setResponseData(JSON.stringify({ error: err.message || 'Request failed' }, null, 2));

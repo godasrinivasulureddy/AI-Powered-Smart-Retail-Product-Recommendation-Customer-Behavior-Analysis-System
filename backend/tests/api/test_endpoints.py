@@ -98,7 +98,21 @@ def test_dashboard_model_metrics_allowed(api_client, viewer_token, admin_token):
     assert {"customer_segmentation", "purchase_prediction", "recommendation"}.issubset(names)
 
 
+def test_eda_analytics_endpoints(api_client, viewer_token):
+    r_sales = api_client.get("/api/v1/dashboard/analytics/monthly-sales", headers=auth_header(viewer_token))
+    assert r_sales.status_code == 200
+    assert len(r_sales.json()["data"]) > 0
+
+    r_countries = api_client.get("/api/v1/dashboard/analytics/countries", headers=auth_header(viewer_token))
+    assert r_countries.status_code == 200
+    assert len(r_countries.json()["data"]) > 0
+
+    r_rfm = api_client.get("/api/v1/dashboard/analytics/rfm-stats", headers=auth_header(viewer_token))
+    assert r_rfm.status_code == 200
+    assert "avg_recency" in r_rfm.json()["data"]
+
 
 def test_unauthenticated_requests_rejected(api_client):
     r = api_client.get("/api/v1/dashboard/executive")
     assert r.status_code == 401
+

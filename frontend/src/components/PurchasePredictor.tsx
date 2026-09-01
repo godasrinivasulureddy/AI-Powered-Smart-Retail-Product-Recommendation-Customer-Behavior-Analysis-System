@@ -57,6 +57,8 @@ export const PurchasePredictor: React.FC = () => {
     }
   };
 
+  const [modelRocAuc, setModelRocAuc] = useState<string>('0.7818');
+
   useEffect(() => {
     api.getCustomers({ limit: 50 }).then((data) => {
       setCustomers(data);
@@ -64,7 +66,19 @@ export const PurchasePredictor: React.FC = () => {
         fetchPrediction(data[0]);
       }
     });
+
+    api.getModelMetrics().then((metrics) => {
+      const predModel = metrics.find((m) => m.model_name === 'purchase_prediction');
+      if (predModel?.metrics) {
+        const winner = predModel.metrics.winner || 'logistic_regression';
+        const modelStats = predModel.metrics.all_models?.[winner];
+        if (modelStats?.roc_auc) {
+          setModelRocAuc(modelStats.roc_auc.toString());
+        }
+      }
+    }).catch(() => {});
   }, []);
+
 
 
   const probability = prediction ? prediction.probability : 0.0;
@@ -241,8 +255,8 @@ export const PurchasePredictor: React.FC = () => {
               <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">
                 Model Prediction Result
               </span>
-              <span className="text-[11px] font-mono text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200 font-semibold">
-                ROC-AUC 0.892
+              <span className="text-[11px] font-mono text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded-full border border-indigo-200 font-semibold">
+                ROC-AUC {modelRocAuc}
               </span>
             </div>
 

@@ -36,4 +36,20 @@ def model_metrics(db: Session = Depends(get_db), user=Depends(_any_role)):
     return {"data": DashboardService(db).model_metrics(), "error": None}
 
 
+@router.get("/analytics/monthly-sales", response_model=Envelope[list])
+def monthly_sales(db: Session = Depends(get_db), user=Depends(_any_role)):
+    return {"data": DashboardService(db).monthly_sales_summary(), "error": None}
+
+
+@router.get("/analytics/countries", response_model=Envelope[list])
+def countries(limit: int = 8, db: Session = Depends(get_db), user=Depends(_any_role)):
+    return {"data": DashboardService(db).country_sales_summary(limit=limit), "error": None}
+
+
+@router.get("/analytics/rfm-stats", response_model=Envelope[dict])
+def rfm_stats(db: Session = Depends(get_db), user=Depends(_any_role)):
+    return {"data": DashboardService(db).rfm_summary(), "error": None}
+
+
+
 

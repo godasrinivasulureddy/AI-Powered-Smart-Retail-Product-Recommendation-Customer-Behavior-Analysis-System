@@ -17,20 +17,29 @@ export const ExecutiveDashboard: React.FC = () => {
   const [metrics, setMetrics] = useState<ExecutiveMetrics | null>(null);
   const [segments, setSegments] = useState<SegmentSummaryItem[]>([]);
   const [products, setProducts] = useState<TopProductSummaryItem[]>([]);
+  const [monthlySales, setMonthlySales] = useState<{ month: string; revenue: number; orders: number }[]>([]);
+  const [countries, setCountries] = useState<{ country: string; revenue: number; orders: number; customers: number }[]>([]);
+  const [rfmStats, setRfmStats] = useState<Record<string, number>>({});
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
 
   const loadData = async () => {
     try {
       setRefreshing(true);
-      const [execData, segData, prodData] = await Promise.all([
+      const [execData, segData, prodData, salesData, countryData, rfmData] = await Promise.all([
         api.getExecutiveMetrics(),
         api.getSegmentsSummary(),
         api.getTopProducts(8),
+        api.getMonthlySales(),
+        api.getCountrySales(6),
+        api.getRfmStats(),
       ]);
       setMetrics(execData);
       setSegments(segData);
       setProducts(prodData);
+      setMonthlySales(salesData);
+      setCountries(countryData);
+      setRfmStats(rfmData);
     } catch (err) {
       console.error('Failed to load dashboard data:', err);
     } finally {
@@ -42,6 +51,7 @@ export const ExecutiveDashboard: React.FC = () => {
   useEffect(() => {
     loadData();
   }, []);
+
 
   if (loading) {
     return (
@@ -234,6 +244,121 @@ export const ExecutiveDashboard: React.FC = () => {
           </div>
         </div>
       </div>
+
+      {/* EDA EXPLORATORY DATA ANALYSIS SECTION */}
+      <div className="bg-white p-6 rounded-2xl border border-slate-200/80 shadow-xs space-y-6">
+        <div className="flex items-center justify-between border-b border-slate-100 pb-4">
+          <div>
+            <div className="flex items-center space-x-2">
+              <span className="p-1.5 bg-indigo-50 text-indigo-600 rounded-lg">
+                <TrendingUp className="w-5 h-5" />
+              </span>
+              <h2 className="text-lg font-bold text-slate-900 tracking-tight">Exploratory Data Analysis (EDA)</h2>
+            </div>
+            <p className="text-xs text-slate-500 mt-1">
+              Database-backed temporal sales trends, geographic distribution, and RFM behavioral metrics.
+            </p>
+          </div>
+          <span className="text-xs font-mono bg-indigo-50 text-indigo-700 px-3 py-1 rounded-full border border-indigo-200 font-semibold">
+            UCI Online Retail II Pipeline
+          </span>
+        </div>
+
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+          {/* Monthly Revenue Trend Bar Visualization */}
+          <div className="lg:col-span-7 bg-slate-50/70 p-5 rounded-2xl border border-slate-200/60 space-y-4">
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-bold text-slate-800 uppercase tracking-wider">
+                Monthly Gross Revenue Trend (2009 – 2011)
+              </span>
+              <span className="text-[11px] font-mono text-slate-500">Database Aggregation</span>
+            </div>
+
+            <div className="h-48 flex items-end justify-between gap-1.5 pt-6 pb-2 px-1">
+              {monthlySales.map((item, idx) => {
+                const maxRev = Math.max(...monthlySales.map((m) => m.revenue), 1);
+                const heightPct = Math.max(10, Math.round((item.revenue / maxRev) * 100));
+                return (
+                  <div key={idx} className="flex-1 flex flex-col items-center gap-1 group relative">
+                    {/* Tooltip */}
+                    <div className="absolute -top-9 opacity-0 group-hover:opacity-100 transition-opacity bg-slate-900 text-white text-[10px] py-1 px-2 rounded font-mono shadow-md z-10 pointer-events-none whitespace-nowrap">
+                      {item.month}: ${item.revenue.toLocaleString()} ({item.orders} orders)
+                    </div>
+                    {/* Bar */}
+                    <div
+                      className="w-full bg-gradient-to-t from-indigo-600 to-violet-500 rounded-t group-hover:from-indigo-500 group-hover:to-violet-400 transition-all"
+                      style={{ height: `${heightPct}%` }}
+                    />
+                    <span className="text-[9px] font-mono text-slate-400 rotate-45 sm:rotate-0 origin-top-left sm:origin-center mt-1">
+                      {item.month.substring(2)}
+                    </span>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Top Country Markets Breakdown */}
+          <div className="lg:col-span-5 bg-slate-50/70 p-5 rounded-2xl border border-slate-200/60 space-y-4">
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-bold text-slate-800 uppercase tracking-wider">
+                Top Geographic Markets (Revenue)
+              </span>
+              <span className="text-[11px] font-mono text-slate-500">By Country</span>
+            </div>
+
+            <div className="space-y-3 pt-1">
+              {countries.map((c, idx) => {
+                const maxRev = countries[0]?.revenue || 1;
+                const widthPct = Math.max(8, Math.round((c.revenue / maxRev) * 100));
+                return (
+                  <div key={idx} className="space-y-1">
+                    <div className="flex justify-between text-xs font-medium">
+                      <span className="text-slate-800 truncate">{c.country}</span>
+                      <span className="font-mono text-slate-600 text-[11px]">
+                        ${c.revenue.toLocaleString()} ({c.customers} cust)
+                      </span>
+                    </div>
+                    <div className="w-full h-2 bg-slate-200 rounded-full overflow-hidden">
+                      <div
+                        className="h-full bg-gradient-to-r from-emerald-500 to-teal-500 rounded-full"
+                        style={{ width: `${widthPct}%` }}
+                      />
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        </div>
+
+        {/* Customer RFM Distribution Averages */}
+        {rfmStats && rfmStats.avg_recency !== undefined && (
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 pt-2">
+            <div className="p-3.5 bg-slate-50 rounded-xl border border-slate-200/60 text-center space-y-1">
+              <span className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider block">Average Recency</span>
+              <span className="text-lg font-bold text-slate-900 font-mono">{rfmStats.avg_recency} days</span>
+              <span className="text-[10px] text-slate-400 block font-mono">Range: {rfmStats.min_recency} – {rfmStats.max_recency}d</span>
+            </div>
+            <div className="p-3.5 bg-slate-50 rounded-xl border border-slate-200/60 text-center space-y-1">
+              <span className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider block">Average Frequency</span>
+              <span className="text-lg font-bold text-slate-900 font-mono">{rfmStats.avg_frequency} orders</span>
+              <span className="text-[10px] text-slate-400 block font-mono">Range: {rfmStats.min_frequency} – {rfmStats.max_frequency}</span>
+            </div>
+            <div className="p-3.5 bg-slate-50 rounded-xl border border-slate-200/60 text-center space-y-1">
+              <span className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider block">Average Spend</span>
+              <span className="text-lg font-bold text-emerald-600 font-mono">${rfmStats.avg_monetary?.toLocaleString()}</span>
+              <span className="text-[10px] text-slate-400 block font-mono">Range: ${rfmStats.min_monetary} – ${rfmStats.max_monetary?.toLocaleString()}</span>
+            </div>
+            <div className="p-3.5 bg-slate-50 rounded-xl border border-slate-200/60 text-center space-y-1">
+              <span className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider block">Average Order Value</span>
+              <span className="text-lg font-bold text-indigo-600 font-mono">${rfmStats.avg_aov?.toLocaleString()}</span>
+              <span className="text-[10px] text-slate-400 block font-mono">Per Order Average</span>
+            </div>
+          </div>
+        )}
+      </div>
     </div>
   );
 };
+

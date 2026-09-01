@@ -72,6 +72,19 @@ export const api = {
     return fetchJson<ModelMetricEntry[]>(`${API_BASE}/dashboard/model-metrics`);
   },
 
+  getMonthlySales: async (): Promise<{ month: string; revenue: number; orders: number }[]> => {
+    return fetchJson<{ month: string; revenue: number; orders: number }[]>(`${API_BASE}/dashboard/analytics/monthly-sales`);
+  },
+
+  getCountrySales: async (limit = 8): Promise<{ country: string; revenue: number; orders: number; customers: number }[]> => {
+    return fetchJson<{ country: string; revenue: number; orders: number; customers: number }[]>(`${API_BASE}/dashboard/analytics/countries?limit=${limit}`);
+  },
+
+  getRfmStats: async (): Promise<Record<string, number>> => {
+    return fetchJson<Record<string, number>>(`${API_BASE}/dashboard/analytics/rfm-stats`);
+  },
+
+
   getCustomers: async (params?: { limit?: number; offset?: number; segment?: string; search?: string }): Promise<Customer[]> => {
     const query = new URLSearchParams();
     if (params?.limit) query.set('limit', params.limit.toString());
