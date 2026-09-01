@@ -271,26 +271,33 @@ export const ExecutiveDashboard: React.FC = () => {
               <span className="text-xs font-bold text-slate-800 uppercase tracking-wider">
                 Monthly Gross Revenue Trend (2009 – 2011)
               </span>
-              <span className="text-[11px] font-mono text-slate-500">Database Aggregation</span>
+              <span className="text-[11px] font-mono text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded border border-indigo-100 font-semibold">
+                Live SQL Aggregation
+              </span>
             </div>
 
-            <div className="h-48 flex items-end justify-between gap-1.5 pt-6 pb-2 px-1">
+            <div className="h-52 flex items-end justify-between gap-2 pt-6 pb-2 px-1 border-b border-slate-200/60">
               {monthlySales.map((item, idx) => {
                 const maxRev = Math.max(...monthlySales.map((m) => m.revenue), 1);
-                const heightPct = Math.max(10, Math.round((item.revenue / maxRev) * 100));
+                const heightPct = Math.max(12, Math.round((item.revenue / maxRev) * 100));
+                // Format YYYY-MM into MMM YY (e.g. 2009-12 -> Dec 09)
+                const [year, monthNum] = item.month.split('-');
+                const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+                const monthLabel = `${monthNames[parseInt(monthNum, 10) - 1]} '${year.substring(2)}`;
+
                 return (
-                  <div key={idx} className="flex-1 flex flex-col items-center gap-1 group relative">
-                    {/* Tooltip */}
-                    <div className="absolute -top-9 opacity-0 group-hover:opacity-100 transition-opacity bg-slate-900 text-white text-[10px] py-1 px-2 rounded font-mono shadow-md z-10 pointer-events-none whitespace-nowrap">
-                      {item.month}: ${item.revenue.toLocaleString()} ({item.orders} orders)
+                  <div key={idx} className="flex-1 flex flex-col items-center gap-1.5 group relative cursor-pointer">
+                    {/* Floating Tooltip */}
+                    <div className="absolute -top-10 opacity-0 group-hover:opacity-100 transition-all duration-200 bg-slate-900 text-white text-[11px] py-1 px-2.5 rounded-lg font-mono shadow-xl z-20 pointer-events-none whitespace-nowrap border border-slate-700">
+                      <span className="font-bold text-indigo-300">{monthLabel}:</span> ${item.revenue.toLocaleString()} ({item.orders} orders)
                     </div>
-                    {/* Bar */}
+                    {/* Gradient Bar */}
                     <div
-                      className="w-full bg-gradient-to-t from-indigo-600 to-violet-500 rounded-t group-hover:from-indigo-500 group-hover:to-violet-400 transition-all"
+                      className="w-full bg-gradient-to-t from-indigo-600 via-indigo-500 to-violet-500 rounded-t-md group-hover:from-indigo-500 group-hover:to-violet-400 group-hover:shadow-lg group-hover:shadow-indigo-500/20 transition-all duration-300"
                       style={{ height: `${heightPct}%` }}
                     />
-                    <span className="text-[9px] font-mono text-slate-400 rotate-45 sm:rotate-0 origin-top-left sm:origin-center mt-1">
-                      {item.month.substring(2)}
+                    <span className="text-[10px] font-mono font-semibold text-slate-500 group-hover:text-indigo-600 transition-colors">
+                      {monthLabel}
                     </span>
                   </div>
                 );
@@ -307,21 +314,21 @@ export const ExecutiveDashboard: React.FC = () => {
               <span className="text-[11px] font-mono text-slate-500">By Country</span>
             </div>
 
-            <div className="space-y-3 pt-1">
+            <div className="space-y-3.5 pt-1">
               {countries.map((c, idx) => {
                 const maxRev = countries[0]?.revenue || 1;
                 const widthPct = Math.max(8, Math.round((c.revenue / maxRev) * 100));
                 return (
-                  <div key={idx} className="space-y-1">
+                  <div key={idx} className="space-y-1 group">
                     <div className="flex justify-between text-xs font-medium">
-                      <span className="text-slate-800 truncate">{c.country}</span>
+                      <span className="text-slate-800 font-semibold group-hover:text-indigo-600 transition-colors truncate">{c.country}</span>
                       <span className="font-mono text-slate-600 text-[11px]">
-                        ${c.revenue.toLocaleString()} ({c.customers} cust)
+                        ${c.revenue.toLocaleString()} ({c.customers} buyers)
                       </span>
                     </div>
-                    <div className="w-full h-2 bg-slate-200 rounded-full overflow-hidden">
+                    <div className="w-full h-2.5 bg-slate-200/80 rounded-full overflow-hidden p-0.5">
                       <div
-                        className="h-full bg-gradient-to-r from-emerald-500 to-teal-500 rounded-full"
+                        className="h-full bg-gradient-to-r from-emerald-500 to-teal-500 rounded-full group-hover:from-emerald-400 group-hover:to-teal-400 transition-all duration-300"
                         style={{ width: `${widthPct}%` }}
                       />
                     </div>
@@ -335,25 +342,25 @@ export const ExecutiveDashboard: React.FC = () => {
         {/* Customer RFM Distribution Averages */}
         {rfmStats && rfmStats.avg_recency !== undefined && (
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 pt-2">
-            <div className="p-3.5 bg-slate-50 rounded-xl border border-slate-200/60 text-center space-y-1">
-              <span className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider block">Average Recency</span>
-              <span className="text-lg font-bold text-slate-900 font-mono">{rfmStats.avg_recency} days</span>
+            <div className="p-4 bg-slate-50 rounded-xl border border-slate-200/60 text-center space-y-1 hover:border-slate-300 transition-all">
+              <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider block">Average Recency</span>
+              <span className="text-xl font-black text-slate-900 font-mono">{rfmStats.avg_recency} days</span>
               <span className="text-[10px] text-slate-400 block font-mono">Range: {rfmStats.min_recency} – {rfmStats.max_recency}d</span>
             </div>
-            <div className="p-3.5 bg-slate-50 rounded-xl border border-slate-200/60 text-center space-y-1">
-              <span className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider block">Average Frequency</span>
-              <span className="text-lg font-bold text-slate-900 font-mono">{rfmStats.avg_frequency} orders</span>
+            <div className="p-4 bg-slate-50 rounded-xl border border-slate-200/60 text-center space-y-1 hover:border-slate-300 transition-all">
+              <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider block">Average Frequency</span>
+              <span className="text-xl font-black text-slate-900 font-mono">{rfmStats.avg_frequency} orders</span>
               <span className="text-[10px] text-slate-400 block font-mono">Range: {rfmStats.min_frequency} – {rfmStats.max_frequency}</span>
             </div>
-            <div className="p-3.5 bg-slate-50 rounded-xl border border-slate-200/60 text-center space-y-1">
-              <span className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider block">Average Spend</span>
-              <span className="text-lg font-bold text-emerald-600 font-mono">${rfmStats.avg_monetary?.toLocaleString()}</span>
+            <div className="p-4 bg-slate-50 rounded-xl border border-slate-200/60 text-center space-y-1 hover:border-slate-300 transition-all">
+              <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider block">Average Customer Spend</span>
+              <span className="text-xl font-black text-emerald-600 font-mono">${rfmStats.avg_monetary?.toLocaleString()}</span>
               <span className="text-[10px] text-slate-400 block font-mono">Range: ${rfmStats.min_monetary} – ${rfmStats.max_monetary?.toLocaleString()}</span>
             </div>
-            <div className="p-3.5 bg-slate-50 rounded-xl border border-slate-200/60 text-center space-y-1">
-              <span className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider block">Average Order Value</span>
-              <span className="text-lg font-bold text-indigo-600 font-mono">${rfmStats.avg_aov?.toLocaleString()}</span>
-              <span className="text-[10px] text-slate-400 block font-mono">Per Order Average</span>
+            <div className="p-4 bg-slate-50 rounded-xl border border-slate-200/60 text-center space-y-1 hover:border-slate-300 transition-all">
+              <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider block">Customer Mean AOV</span>
+              <span className="text-xl font-black text-indigo-600 font-mono">${rfmStats.avg_aov?.toLocaleString()}</span>
+              <span className="text-[10px] text-slate-400 block font-mono">Per-Customer Average</span>
             </div>
           </div>
         )}
