@@ -345,7 +345,7 @@ export const CustomerExplorer: React.FC = () => {
                       </div>
                       <div className="text-right shrink-0">
                         <span className="text-xs font-bold text-indigo-600 font-mono">
-                          {(item.score * 100).toFixed(0)}% match
+                          Similarity: {item.score.toFixed(3)}
                         </span>
                         <div className="text-[11px] text-slate-500 font-mono">
                           {item.unit_price ? `$${item.unit_price.toFixed(2)}` : 'N/A'}

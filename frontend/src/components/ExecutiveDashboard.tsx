@@ -9,6 +9,10 @@ import {
   ArrowUpRight,
   Sparkles,
   RefreshCw,
+  Globe,
+  BarChart3,
+  Layers,
+  Activity,
 } from 'lucide-react';
 import { api } from '../services/api.ts';
 import { ExecutiveMetrics, SegmentSummaryItem, TopProductSummaryItem } from '../types/index.ts';
@@ -20,19 +24,27 @@ export const ExecutiveDashboard: React.FC = () => {
   const [monthlySales, setMonthlySales] = useState<{ month: string; revenue: number; orders: number }[]>([]);
   const [countries, setCountries] = useState<{ country: string; revenue: number; orders: number; customers: number }[]>([]);
   const [rfmStats, setRfmStats] = useState<Record<string, number>>({});
+  const [rfmDist, setRfmDist] = useState<{
+    recency: { bin: string; count: number }[];
+    frequency: { bin: string; count: number }[];
+    monetary: { bin: string; count: number }[];
+  } | null>(null);
+
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [hoveredPoint, setHoveredPoint] = useState<{ month: string; revenue: number; orders: number; x: number; y: number } | null>(null);
 
   const loadData = async () => {
     try {
       setRefreshing(true);
-      const [execData, segData, prodData, salesData, countryData, rfmData] = await Promise.all([
+      const [execData, segData, prodData, salesData, countryData, rfmData, rfmDistData] = await Promise.all([
         api.getExecutiveMetrics(),
         api.getSegmentsSummary(),
         api.getTopProducts(8),
         api.getMonthlySales(),
         api.getCountrySales(6),
         api.getRfmStats(),
+        api.getRfmDistributions(),
       ]);
       setMetrics(execData);
       setSegments(segData);
@@ -40,6 +52,7 @@ export const ExecutiveDashboard: React.FC = () => {
       setMonthlySales(salesData);
       setCountries(countryData);
       setRfmStats(rfmData);
+      setRfmDist(rfmDistData);
     } catch (err) {
       console.error('Failed to load dashboard data:', err);
     } finally {
@@ -51,7 +64,6 @@ export const ExecutiveDashboard: React.FC = () => {
   useEffect(() => {
     loadData();
   }, []);
-
 
   if (loading) {
     return (
@@ -98,6 +110,34 @@ export const ExecutiveDashboard: React.FC = () => {
       lightBg: 'bg-amber-50 text-amber-700 border-amber-100',
     },
   ];
+
+  // SVG Chart Geometry Calculations
+  const chartWidth = 700;
+  const chartHeight = 200;
+  const paddingLeft = 60;
+  const paddingRight = 20;
+  const paddingTop = 20;
+  const paddingBottom = 35;
+  const graphWidth = chartWidth - paddingLeft - paddingRight;
+  const graphHeight = chartHeight - paddingTop - paddingBottom;
+  const maxY = 1500000; // $1.5M max scale
+
+  const points = monthlySales.map((item, i) => {
+    const x = paddingLeft + i * (graphWidth / Math.max(monthlySales.length - 1, 1));
+    const clampedRevenue = Math.min(item.revenue, maxY);
+    const y = paddingTop + (graphHeight - (clampedRevenue / maxY) * graphHeight);
+    return { ...item, x, y };
+  });
+
+  const linePathD = points.length > 0
+    ? points.reduce((acc, p, i) => (i === 0 ? `M ${p.x} ${p.y}` : `${acc} L ${p.x} ${p.y}`), '')
+    : '';
+
+  const areaPathD = points.length > 0
+    ? `${linePathD} L ${points[points.length - 1].x} ${paddingTop + graphHeight} L ${points[0].x} ${paddingTop + graphHeight} Z`
+    : '';
+
+  const yTicks = [1500000, 1000000, 500000, 0];
 
   return (
     <div className="space-y-6">
@@ -146,108 +186,11 @@ export const ExecutiveDashboard: React.FC = () => {
         })}
       </div>
 
-      {/* Analytics Charts & Breakdowns */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Customer RFM Segmentation Distribution */}
-        <div className="bg-white p-6 rounded-2xl border border-slate-200/80 shadow-xs lg:col-span-1 flex flex-col">
-          <div className="flex items-center justify-between mb-4">
-            <div className="flex items-center space-x-2">
-              <div className="p-2 bg-indigo-50 text-indigo-600 rounded-lg">
-                <PieChart className="w-4 h-4" />
-              </div>
-              <h2 className="font-bold text-slate-900 text-base">Customer Segment Share</h2>
-            </div>
-            <span className="text-xs font-mono bg-slate-100 text-slate-600 px-2 py-0.5 rounded-md">
-              K-Means v2.4
-            </span>
-          </div>
-          <p className="text-xs text-slate-500 mb-5">
-            Behavioral clustering categorized by Recency, Frequency, and Monetary (RFM) vectors.
-          </p>
-
-          <div className="space-y-4 flex-1">
-            {segments.map((seg, idx) => (
-              <div key={idx} className="space-y-1.5">
-                <div className="flex justify-between text-xs font-medium">
-                  <span className="text-slate-700 font-semibold">{seg.segment_label}</span>
-                  <span className="text-slate-500">
-                    {seg.count} customers ({seg.percentage !== undefined ? seg.percentage : ((seg.count / (metrics?.total_customers || 5852)) * 100).toFixed(1)}%)
-                  </span>
-                </div>
-                <div className="w-full h-2.5 bg-slate-100 rounded-full overflow-hidden">
-                  <div
-                    className="h-full rounded-full transition-all duration-500"
-                    style={{
-                      width: `${seg.percentage !== undefined ? seg.percentage : ((seg.count / (metrics?.total_customers || 5852)) * 100).toFixed(1)}%`,
-                      backgroundColor: seg.color || '#6366f1',
-                    }}
-                  />
-
-                </div>
-              </div>
-            ))}
-          </div>
-
-          <div className="mt-6 pt-4 border-t border-slate-100 bg-slate-50 -mx-6 -mb-6 p-4 rounded-b-2xl">
-            <div className="flex items-center space-x-2 text-xs text-slate-600">
-              <Sparkles className="w-4 h-4 text-indigo-600 shrink-0" />
-              <span>
-                <strong>Champions & Loyalists</strong> contribute over 68% of total revenue.
-              </span>
-            </div>
-          </div>
-        </div>
-
-        {/* Top Products Ranking */}
-        <div className="bg-white p-6 rounded-2xl border border-slate-200/80 shadow-xs lg:col-span-2">
-          <div className="flex items-center justify-between mb-4">
-            <div className="flex items-center space-x-2">
-              <div className="p-2 bg-amber-50 text-amber-600 rounded-lg">
-                <Award className="w-4 h-4" />
-              </div>
-              <h2 className="font-bold text-slate-900 text-base">Top Performing Retail StockCodes</h2>
-            </div>
-            <span className="text-xs text-slate-500 font-medium">By Total Units Dispatched</span>
-          </div>
-
-          <div className="overflow-x-auto">
-            <table className="w-full text-left text-sm">
-              <thead>
-                <tr className="border-b border-slate-200 text-xs font-semibold text-slate-500 uppercase tracking-wider">
-                  <th className="pb-3 pr-4">StockCode</th>
-                  <th className="pb-3 px-4">Description</th>
-                  <th className="pb-3 px-4 text-right">Units Sold</th>
-                  <th className="pb-3 pl-4 text-right">Estimated Revenue</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-100 font-normal text-slate-700">
-                {products.map((p, idx) => (
-                  <tr key={idx} className="hover:bg-slate-50/80 transition-colors">
-                    <td className="py-3 pr-4">
-                      <span className="font-mono text-xs font-bold bg-slate-100 text-slate-800 px-2 py-1 rounded-md border border-slate-200">
-                        {p.external_id}
-                      </span>
-                    </td>
-                    <td className="py-3 px-4 text-xs font-medium text-slate-900 max-w-xs truncate">
-                      {p.description}
-                    </td>
-                    <td className="py-3 px-4 text-right font-mono text-xs font-semibold text-slate-900">
-                      {p.units_sold.toLocaleString()}
-                    </td>
-                    <td className="py-3 pl-4 text-right font-mono text-xs font-bold text-emerald-600">
-                      ${p.revenue?.toLocaleString('en-US', { minimumFractionDigits: 2 }) || '0.00'}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </div>
-      </div>
-
-      {/* EDA EXPLORATORY DATA ANALYSIS SECTION */}
+      {/* ============================================================ */}
+      {/* SECTION 1: EXPLORATORY DATA ANALYSIS (EDA)                    */}
+      {/* ============================================================ */}
       <div className="bg-white p-6 rounded-2xl border border-slate-200/80 shadow-xs space-y-6">
-        <div className="flex items-center justify-between border-b border-slate-100 pb-4">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-100 pb-4">
           <div>
             <div className="flex items-center space-x-2">
               <span className="p-1.5 bg-indigo-50 text-indigo-600 rounded-lg">
@@ -256,65 +199,118 @@ export const ExecutiveDashboard: React.FC = () => {
               <h2 className="text-lg font-bold text-slate-900 tracking-tight">Exploratory Data Analysis (EDA)</h2>
             </div>
             <p className="text-xs text-slate-500 mt-1">
-              Database-backed temporal sales trends, geographic distribution, and RFM behavioral metrics.
+              Database-backed temporal sales trends, geographic distribution, and product demand metrics.
             </p>
           </div>
-          <span className="text-xs font-mono bg-indigo-50 text-indigo-700 px-3 py-1 rounded-full border border-indigo-200 font-semibold">
+          <span className="text-xs font-mono bg-indigo-50 text-indigo-700 px-3 py-1 rounded-full border border-indigo-200 font-semibold w-fit">
             UCI Online Retail II Pipeline
           </span>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-          {/* Monthly Revenue Trend Bar Visualization */}
-          <div className="lg:col-span-7 bg-slate-50/70 p-5 rounded-2xl border border-slate-200/60 space-y-4">
-            <div className="flex items-center justify-between">
-              <span className="text-xs font-bold text-slate-800 uppercase tracking-wider">
+        {/* 1. Monthly Revenue Trend (Line/Area Chart) */}
+        <div className="bg-slate-50/70 p-5 rounded-2xl border border-slate-200/60 space-y-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <h3 className="text-sm font-bold text-slate-800 uppercase tracking-wider">
                 Monthly Gross Revenue Trend (2009 – 2011)
-              </span>
-              <span className="text-[11px] font-mono text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded border border-indigo-100 font-semibold">
-                Live SQL Aggregation
-              </span>
+              </h3>
+              <p className="text-xs text-slate-500">
+                Continuous monthly revenue trajectory across 39,520 valid completed orders
+              </p>
             </div>
+            <span className="text-[11px] font-mono text-indigo-600 bg-indigo-50 px-2.5 py-0.5 rounded border border-indigo-100 font-semibold">
+              Live SQL Telemetry
+            </span>
+          </div>
 
-            <div className="h-52 flex items-end justify-between gap-2 pt-6 pb-2 px-1 border-b border-slate-200/60">
-              {monthlySales.map((item, idx) => {
-                const maxRev = Math.max(...monthlySales.map((m) => m.revenue), 1);
-                const heightPct = Math.max(12, Math.round((item.revenue / maxRev) * 100));
-                // Format YYYY-MM into MMM YY (e.g. 2009-12 -> Dec 09)
-                const [year, monthNum] = item.month.split('-');
+          <div className="relative w-full overflow-hidden">
+            <svg viewBox={`0 0 ${chartWidth} ${chartHeight}`} className="w-full h-auto max-h-64 overflow-visible">
+              <defs>
+                <linearGradient id="revenueGradient" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0%" stopColor="#6366f1" stopOpacity="0.35" />
+                  <stop offset="100%" stopColor="#6366f1" stopOpacity="0.0" />
+                </linearGradient>
+              </defs>
+
+              {/* Horizontal Gridlines & Y Ticks */}
+              {yTicks.map((val, idx) => {
+                const y = paddingTop + (graphHeight - (val / maxY) * graphHeight);
+                return (
+                  <g key={idx}>
+                    <line x1={paddingLeft} y1={y} x2={chartWidth - paddingRight} y2={y} stroke="#e2e8f0" strokeDasharray="4 4" strokeWidth="1" />
+                    <text x={paddingLeft - 8} y={y + 4} textAnchor="end" className="text-[10px] font-mono fill-slate-400 font-medium">
+                      {val === 0 ? '$0' : `$${(val / 1000).toFixed(0)}k`}
+                    </text>
+                  </g>
+                );
+              })}
+
+              {/* Area Gradient Fill */}
+              {areaPathD && <path d={areaPathD} fill="url(#revenueGradient)" />}
+
+              {/* Main Trend Line */}
+              {linePathD && <path d={linePathD} fill="none" stroke="#6366f1" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" />}
+
+              {/* Data Points & X-Axis Labels */}
+              {points.map((p, i) => {
+                const showXLabel = i % 3 === 0 || i === points.length - 1;
+                const [year, monthNum] = p.month.split('-');
                 const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
                 const monthLabel = `${monthNames[parseInt(monthNum, 10) - 1]} '${year.substring(2)}`;
 
                 return (
-                  <div key={idx} className="flex-1 flex flex-col items-center gap-1.5 group relative cursor-pointer">
-                    {/* Floating Tooltip */}
-                    <div className="absolute -top-10 opacity-0 group-hover:opacity-100 transition-all duration-200 bg-slate-900 text-white text-[11px] py-1 px-2.5 rounded-lg font-mono shadow-xl z-20 pointer-events-none whitespace-nowrap border border-slate-700">
-                      <span className="font-bold text-indigo-300">{monthLabel}:</span> ${item.revenue.toLocaleString()} ({item.orders} orders)
-                    </div>
-                    {/* Gradient Bar */}
-                    <div
-                      className="w-full bg-gradient-to-t from-indigo-600 via-indigo-500 to-violet-500 rounded-t-md group-hover:from-indigo-500 group-hover:to-violet-400 group-hover:shadow-lg group-hover:shadow-indigo-500/20 transition-all duration-300"
-                      style={{ height: `${heightPct}%` }}
+                  <g key={i}>
+                    {/* Point Circle */}
+                    <circle
+                      cx={p.x}
+                      cy={p.y}
+                      r="4"
+                      className="fill-white stroke-indigo-600 stroke-2 hover:r-6 transition-all cursor-pointer"
+                      onMouseEnter={() => setHoveredPoint(p)}
+                      onMouseLeave={() => setHoveredPoint(null)}
                     />
-                    <span className="text-[10px] font-mono font-semibold text-slate-500 group-hover:text-indigo-600 transition-colors">
-                      {monthLabel}
-                    </span>
-                  </div>
+
+                    {/* X-Axis Tick Label */}
+                    {showXLabel && (
+                      <text x={p.x} y={chartHeight - 10} textAnchor="middle" className="text-[10px] font-mono fill-slate-500 font-semibold">
+                        {monthLabel}
+                      </text>
+                    )}
+                  </g>
                 );
               })}
-            </div>
-          </div>
+            </svg>
 
-          {/* Top Country Markets Breakdown */}
-          <div className="lg:col-span-5 bg-slate-50/70 p-5 rounded-2xl border border-slate-200/60 space-y-4">
+            {/* Hover Tooltip Overlay */}
+            {hoveredPoint && (
+              <div
+                className="absolute bg-slate-900 text-white text-xs p-2.5 rounded-xl shadow-xl z-30 font-mono pointer-events-none border border-slate-700 space-y-1 transform -translate-x-1/2 -translate-y-full"
+                style={{
+                  left: `${(hoveredPoint.x / chartWidth) * 100}%`,
+                  top: `${(hoveredPoint.y / chartHeight) * 100}%`,
+                }}
+              >
+                <div className="font-bold text-indigo-300">{hoveredPoint.month} Revenue:</div>
+                <div className="text-emerald-400 font-extrabold text-sm">${hoveredPoint.revenue.toLocaleString()}</div>
+                <div className="text-slate-400 text-[10px]">{hoveredPoint.orders.toLocaleString()} orders completed</div>
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* 2 & 3. Top Markets & Top Products Grid */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          {/* Top Markets by Revenue */}
+          <div className="bg-slate-50/70 p-5 rounded-2xl border border-slate-200/60 space-y-4">
             <div className="flex items-center justify-between">
-              <span className="text-xs font-bold text-slate-800 uppercase tracking-wider">
-                Top Geographic Markets (Revenue)
-              </span>
+              <div className="flex items-center space-x-2">
+                <Globe className="w-4 h-4 text-emerald-600" />
+                <h3 className="text-xs font-bold text-slate-800 uppercase tracking-wider">Top Markets by Revenue</h3>
+              </div>
               <span className="text-[11px] font-mono text-slate-500">By Country</span>
             </div>
 
-            <div className="space-y-3.5 pt-1">
+            <div className="space-y-3 pt-1">
               {countries.map((c, idx) => {
                 const maxRev = countries[0]?.revenue || 1;
                 const widthPct = Math.max(8, Math.round((c.revenue / maxRev) * 100));
@@ -337,11 +333,69 @@ export const ExecutiveDashboard: React.FC = () => {
               })}
             </div>
           </div>
+
+          {/* Top Products by Units Sold */}
+          <div className="bg-slate-50/70 p-5 rounded-2xl border border-slate-200/60 space-y-4">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center space-x-2">
+                <Award className="w-4 h-4 text-amber-600" />
+                <h3 className="text-xs font-bold text-slate-800 uppercase tracking-wider">Top Products by Units Sold</h3>
+              </div>
+              <span className="text-[11px] font-mono text-slate-500 font-medium">By Volume</span>
+            </div>
+
+            <div className="space-y-3 pt-1">
+              {products.map((p, idx) => {
+                const maxUnits = products[0]?.units_sold || 1;
+                const widthPct = Math.max(8, Math.round((p.units_sold / maxUnits) * 100));
+                return (
+                  <div key={idx} className="space-y-1 group">
+                    <div className="flex justify-between text-xs font-medium">
+                      <span className="text-slate-800 font-semibold group-hover:text-indigo-600 transition-colors truncate max-w-[200px]" title={p.description}>
+                        {p.description}
+                      </span>
+                      <span className="font-mono text-slate-600 text-[11px]">
+                        {p.units_sold.toLocaleString()} units (${p.revenue?.toLocaleString() || '0'})
+                      </span>
+                    </div>
+                    <div className="w-full h-2.5 bg-slate-200/80 rounded-full overflow-hidden p-0.5">
+                      <div
+                        className="h-full bg-gradient-to-r from-amber-500 to-orange-500 rounded-full group-hover:from-amber-400 group-hover:to-orange-400 transition-all duration-300"
+                        style={{ width: `${widthPct}%` }}
+                      />
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* ============================================================ */}
+      {/* SECTION 2: CUSTOMER BEHAVIOR ANALYSIS                       */}
+      {/* ============================================================ */}
+      <div className="bg-white p-6 rounded-2xl border border-slate-200/80 shadow-xs space-y-6">
+        <div className="flex items-center justify-between border-b border-slate-100 pb-4">
+          <div>
+            <div className="flex items-center space-x-2">
+              <span className="p-1.5 bg-violet-50 text-violet-600 rounded-lg">
+                <Users className="w-5 h-5" />
+              </span>
+              <h2 className="text-lg font-bold text-slate-900 tracking-tight">Customer Behavior Analysis</h2>
+            </div>
+            <p className="text-xs text-slate-500 mt-1">
+              RFM feature profiling and K-Means clustering distributions across 5,852 database customers.
+            </p>
+          </div>
+          <span className="text-xs font-mono bg-violet-50 text-violet-700 px-3 py-1 rounded-full border border-violet-200 font-semibold">
+            RFM Profiling Engine
+          </span>
         </div>
 
-        {/* Customer RFM Distribution Averages */}
+        {/* 4 RFM Summary Cards */}
         {rfmStats && rfmStats.avg_recency !== undefined && (
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 pt-2">
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
             <div className="p-4 bg-slate-50 rounded-xl border border-slate-200/60 text-center space-y-1 hover:border-slate-300 transition-all">
               <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider block">Average Recency</span>
               <span className="text-xl font-black text-slate-900 font-mono">{rfmStats.avg_recency} days</span>
@@ -364,8 +418,119 @@ export const ExecutiveDashboard: React.FC = () => {
             </div>
           </div>
         )}
+
+        {/* 3 Customer Behavior Distributions + K-Means Cluster Distribution */}
+        {rfmDist && (
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            {/* A. Recency Bins */}
+            <div className="bg-slate-50/70 p-5 rounded-2xl border border-slate-200/60 space-y-3">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-bold text-slate-800 uppercase tracking-wider">Recency Distribution</span>
+                <span className="text-[10px] font-mono text-slate-500">Days Since Last Order</span>
+              </div>
+              <div className="space-y-2.5 pt-1">
+                {rfmDist.recency.map((item, idx) => {
+                  const pct = ((item.count / 5852) * 100).toFixed(1);
+                  return (
+                    <div key={idx} className="space-y-1">
+                      <div className="flex justify-between text-xs font-medium">
+                        <span className="text-slate-700 font-semibold">{item.bin}</span>
+                        <span className="font-mono text-slate-500 text-[11px]">{item.count} cust ({pct}%)</span>
+                      </div>
+                      <div className="w-full h-2 bg-slate-200 rounded-full overflow-hidden">
+                        <div className="h-full bg-indigo-500 rounded-full" style={{ width: `${pct}%` }} />
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* B. Frequency Bins */}
+            <div className="bg-slate-50/70 p-5 rounded-2xl border border-slate-200/60 space-y-3">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-bold text-slate-800 uppercase tracking-wider">Frequency Distribution</span>
+                <span className="text-[10px] font-mono text-slate-500">Lifetime Order Count</span>
+              </div>
+              <div className="space-y-2.5 pt-1">
+                {rfmDist.frequency.map((item, idx) => {
+                  const pct = ((item.count / 5852) * 100).toFixed(1);
+                  return (
+                    <div key={idx} className="space-y-1">
+                      <div className="flex justify-between text-xs font-medium">
+                        <span className="text-slate-700 font-semibold">{item.bin}</span>
+                        <span className="font-mono text-slate-500 text-[11px]">{item.count} cust ({pct}%)</span>
+                      </div>
+                      <div className="w-full h-2 bg-slate-200 rounded-full overflow-hidden">
+                        <div className="h-full bg-violet-500 rounded-full" style={{ width: `${pct}%` }} />
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* C. Monetary Bins */}
+            <div className="bg-slate-50/70 p-5 rounded-2xl border border-slate-200/60 space-y-3">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-bold text-slate-800 uppercase tracking-wider">Monetary Spend Distribution</span>
+                <span className="text-[10px] font-mono text-slate-500">Lifetime Gross Spend</span>
+              </div>
+              <div className="space-y-2.5 pt-1">
+                {rfmDist.monetary.map((item, idx) => {
+                  const pct = ((item.count / 5852) * 100).toFixed(1);
+                  return (
+                    <div key={idx} className="space-y-1">
+                      <div className="flex justify-between text-xs font-medium">
+                        <span className="text-slate-700 font-semibold">{item.bin}</span>
+                        <span className="font-mono text-slate-500 text-[11px]">{item.count} cust ({pct}%)</span>
+                      </div>
+                      <div className="w-full h-2 bg-slate-200 rounded-full overflow-hidden">
+                        <div className="h-full bg-emerald-500 rounded-full" style={{ width: `${pct}%` }} />
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* K-Means Customer Segment Distribution (K=2) */}
+        <div className="bg-slate-50/70 p-5 rounded-2xl border border-slate-200/60 space-y-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center space-x-2">
+              <PieChart className="w-4 h-4 text-indigo-600" />
+              <h3 className="text-xs font-bold text-slate-800 uppercase tracking-wider">K-Means Customer Segment Distribution (K=2)</h3>
+            </div>
+            <span className="text-[11px] font-mono text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded border border-indigo-100 font-semibold">
+              Silhouette: 0.4397
+            </span>
+          </div>
+
+          <div className="space-y-3">
+            {segments.map((seg, idx) => (
+              <div key={idx} className="space-y-1.5">
+                <div className="flex justify-between text-xs font-medium">
+                  <span className="text-slate-800 font-bold">{seg.segment_label}</span>
+                  <span className="font-mono text-slate-600">
+                    {seg.count.toLocaleString()} customers ({seg.percentage}% of catalog)
+                  </span>
+                </div>
+                <div className="w-full h-3 bg-slate-200 rounded-full overflow-hidden">
+                  <div
+                    className="h-full rounded-full transition-all duration-500"
+                    style={{
+                      width: `${seg.percentage}%`,
+                      backgroundColor: seg.color || '#6366f1',
+                    }}
+                  />
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
       </div>
     </div>
   );
 };
-

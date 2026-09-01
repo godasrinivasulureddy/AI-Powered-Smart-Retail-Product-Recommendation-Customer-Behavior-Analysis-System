@@ -166,3 +166,59 @@ class DashboardService:
             "max_monetary": round(float(r[9]), 2),
         }
 
+    def rfm_distributions(self) -> dict:
+        from app.db.models import CustomerFeature
+        from sqlalchemy import case
+
+        recency_order = ["0-30 days", "31-90 days", "91-180 days", "181-365 days", "365+ days"]
+        r_rows = dict(
+            self.db.query(
+                case(
+                    (CustomerFeature.recency_days <= 30, "0-30 days"),
+                    (CustomerFeature.recency_days <= 90, "31-90 days"),
+                    (CustomerFeature.recency_days <= 180, "91-180 days"),
+                    (CustomerFeature.recency_days <= 365, "181-365 days"),
+                    else_="365+ days"
+                ).label("bin"),
+                func.count(CustomerFeature.customer_id)
+            ).group_by("bin").all()
+        )
+        recency = [{"bin": b, "count": r_rows.get(b, 0)} for b in recency_order]
+
+        freq_order = ["1 order", "2-5 orders", "6-15 orders", "16-30 orders", "31+ orders"]
+        f_rows = dict(
+            self.db.query(
+                case(
+                    (CustomerFeature.frequency == 1, "1 order"),
+                    (CustomerFeature.frequency <= 5, "2-5 orders"),
+                    (CustomerFeature.frequency <= 15, "6-15 orders"),
+                    (CustomerFeature.frequency <= 30, "16-30 orders"),
+                    else_="31+ orders"
+                ).label("bin"),
+                func.count(CustomerFeature.customer_id)
+            ).group_by("bin").all()
+        )
+        frequency = [{"bin": b, "count": f_rows.get(b, 0)} for b in freq_order]
+
+        monetary_order = ["< $500", "$500-$1.5K", "$1.5K-$5K", "$5K-$15K", "$15K+"]
+        m_rows = dict(
+            self.db.query(
+                case(
+                    (CustomerFeature.monetary < 500, "< $500"),
+                    (CustomerFeature.monetary <= 1500, "$500-$1.5K"),
+                    (CustomerFeature.monetary <= 5000, "$1.5K-$5K"),
+                    (CustomerFeature.monetary <= 15000, "$5K-$15K"),
+                    else_="$15K+"
+                ).label("bin"),
+                func.count(CustomerFeature.customer_id)
+            ).group_by("bin").all()
+        )
+        monetary = [{"bin": b, "count": m_rows.get(b, 0)} for b in monetary_order]
+
+        return {
+            "recency": recency,
+            "frequency": frequency,
+            "monetary": monetary
+        }
+
+

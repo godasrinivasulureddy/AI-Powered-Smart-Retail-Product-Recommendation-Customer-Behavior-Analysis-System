@@ -51,5 +51,11 @@ def rfm_stats(db: Session = Depends(get_db), user=Depends(_any_role)):
     return {"data": DashboardService(db).rfm_summary(), "error": None}
 
 
+@router.get("/analytics/rfm-distributions", response_model=Envelope[dict])
+def rfm_distributions(db: Session = Depends(get_db), user=Depends(_any_role)):
+    return {"data": DashboardService(db).rfm_distributions(), "error": None}
+
+
+
 
 

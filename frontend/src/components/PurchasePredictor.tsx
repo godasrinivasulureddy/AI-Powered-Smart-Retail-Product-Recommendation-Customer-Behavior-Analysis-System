@@ -293,9 +293,9 @@ export const PurchasePredictor: React.FC = () => {
             </div>
           </div>
 
-          {/* Model Attribution Factors */}
+          {/* Customer Feature Context */}
           <div className="space-y-2.5">
-            <span className="text-xs font-bold text-slate-700">Attribution Impact Breakdown:</span>
+            <span className="text-xs font-bold text-slate-700">Customer Feature Context:</span>
             {factors.map((item, idx) => (
               <div key={idx} className="p-3 bg-slate-50 rounded-xl border border-slate-100 text-xs flex items-center justify-between">
                 <div>

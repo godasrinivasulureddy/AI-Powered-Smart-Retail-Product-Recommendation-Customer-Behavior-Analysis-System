@@ -84,6 +84,11 @@ export const api = {
     return fetchJson<Record<string, number>>(`${API_BASE}/dashboard/analytics/rfm-stats`);
   },
 
+  getRfmDistributions: async (): Promise<{ recency: { bin: string; count: number }[]; frequency: { bin: string; count: number }[]; monetary: { bin: string; count: number }[] }> => {
+    return fetchJson<{ recency: { bin: string; count: number }[]; frequency: { bin: string; count: number }[]; monetary: { bin: string; count: number }[] }>(`${API_BASE}/dashboard/analytics/rfm-distributions`);
+  },
+
+
 
   getCustomers: async (params?: { limit?: number; offset?: number; segment?: string; search?: string }): Promise<Customer[]> => {
     const query = new URLSearchParams();

@@ -196,8 +196,8 @@ export const RecommendationSandbox: React.FC = () => {
                     <span className="font-mono text-xs font-bold text-indigo-700 bg-indigo-50 border border-indigo-100 px-2 py-0.5 rounded-md">
                       {item.external_id}
                     </span>
-                    <span className="text-xs font-extrabold text-emerald-600 font-mono bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200">
-                      {(item.score * 100).toFixed(0)}% Match
+                    <span className="text-[11px] font-extrabold text-indigo-600 font-mono bg-indigo-50 px-2.5 py-0.5 rounded-full border border-indigo-200">
+                      Similarity: {item.score.toFixed(3)}
                     </span>
                   </div>
 
@@ -207,7 +207,7 @@ export const RecommendationSandbox: React.FC = () => {
 
                   <div className="bg-slate-50 p-2.5 rounded-xl border border-slate-100 text-xs text-slate-600 mb-4">
                     <span className="font-semibold text-slate-700 block mb-0.5 text-[11px] uppercase tracking-wide">
-                      AI Reasoning
+                      Recommendation Rationale
                     </span>
                     <p className="text-[11px] text-slate-500 leading-relaxed">{item.reason}</p>
                   </div>
